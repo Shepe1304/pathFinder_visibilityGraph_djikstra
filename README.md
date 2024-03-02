@@ -1,7 +1,7 @@
 # pathFinder_visibilityGraph_djikstra
 School assignment.
 
-Wooo! March 2 and almost done with it. The main functionalities are working just right, but I think this code has much room for optimization, so I look forward to doing that. Any further updates will be updated and the code will be reuploaded~
+Wooo! March 2 and almost done with it. The main functionalities are working just right, but this code has much room for optimization, so I look forward to doing that. Any further updates will be updated and the code will be reuploaded~
 
 Thanks for reading.
 
