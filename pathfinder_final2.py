@@ -1,3 +1,7 @@
+# Sửa lại visibility lines nối ngoài map (nối vào (-10,-10))
+
+# Sửa lại việc xóa shortest path khi start_goal hoặc end_goal mất
+
 # ADD FEATURE: Translate start_point and goal_point when moving scroller is maneuvered (instead of clearing them).
 # trường hợp runtime thi thoảng bị chuyển thành âm
 
@@ -28,6 +32,13 @@ windll.shcore.SetProcessDpiAwareness(1) # fix blurry
 window.state("zoomed")
 
 offset = 0
+offset2 = 0
+offset3 = 0
+
+offset2_original = 0
+offset3_original = 0
+
+last_scale = 50
 
 # CREATE SECTIONS ==========
 root = Label(window)
@@ -131,6 +142,12 @@ def clearCanvas(code):
         start_point = (-10, -10)
         goal_point = (-10, -10)
 
+        offset2 = 0
+        offset3 = 0
+
+        offset2_original = 0
+        offset3_original = 0
+
         global zeroVisibilityLines
         global zeroPointsEdges
         zeroPointsEdges = True
@@ -154,6 +171,10 @@ def clearCanvas(code):
         runtime = -1
         start_time = -1
         stop_time = -1
+
+        global last_mode_clicked
+        last_mode_clicked = 'none'
+
     drawGrid()
 
 def getPointSize():
@@ -270,35 +291,58 @@ def repeatMap(pointList, edgeList, repetitions):
 
     last_repetitions = repetitions
 
-def generateMap(pointList, edgeList, repetitions, code, show_info):
+def updateStartGoalPoints():
+    global start_point
+    global goal_point
+    global detranslated_start_point
+    global detranslated_goal_point
+
+    if start_point != (-10, -10):
+        start_point = (detranslated_start_point[0] * cellSize - offset2_original, detranslated_start_point[1] * cellSize - offset2_original)
+    if goal_point != (-10, -10):
+        goal_point =  (detranslated_goal_point[0] * cellSize - offset3_original, detranslated_goal_point[1] * cellSize - offset3_original)
+
+def generateMap(pointList, edgeList, repetitions, code, show_info, click):
 
     global last_mode_clicked
-    last_mode_clicked = 'map'
+    if click == 'click':
+        last_mode_clicked = 'map'
 
     global mode_shortest_path
     global start_point
     global goal_point
     global shortest_path
 
+    global start_goal_connect
+    global currentTranslatedPointList
+    global offset
+    global offset2
+    global offset3
+
+    global last_scale
+
     if show_info:
         global start_time
         global stop_time
         start_time = timeit.default_timer()
 
-    global mode_shortest_path
-    if mode_shortest_path or (start_point == (-10, -10) and goal_point == (-10, -10)):
-        drawVisibilityGraphStartGoal(1)
-        drawVisibilityGraphStartGoal(2)
-    else:
-        start_point = (-10, -10)
-        goal_point = (-10, -10)
-        shortest_path = []
-        # mode_shortest_path = False
+    # global mode_shortest_path
+    # if mode_shortest_path or (start_point == (-10, -10) and goal_point == (-10, -10)):
+    #     drawVisibilityGraphStartGoal(1)
+    #     drawVisibilityGraphStartGoal(2)
+    # else:
+    #     start_point = (-10, -10)
+    #     goal_point = (-10, -10)
+    #     shortest_path = []
+
+        # if repetitions != last_repetitions:
+        #     mode_shortest_path = False
 
     global zeroPointsEdges
     global zeroVisibilityLines
 
     clearCanvas(0)
+
     if repetitions == 0:
         zeroPointsEdges = True
         return
@@ -312,6 +356,54 @@ def generateMap(pointList, edgeList, repetitions, code, show_info):
     drawMap(currentTranslatedPointList, currentEdgeList)
     zeroPointsEdges = False
 
+    global mode_shortest_path
+
+    # if (int(scale.get()) != last_scale) and not mode_shortest_path:
+    #     print("function reached 1")
+    #     updateStartGoalPoints()
+    #     RedrawVisibility()
+
+    updateStartGoalPoints()
+    RedrawVisibility()
+
+    if mode_shortest_path or (start_point == (-10, -10) and goal_point == (-10, -10)):
+        # drawVisibilityGraphStartGoal(1)
+        # drawVisibilityGraphStartGoal(2)
+        # updateStartGoalPoints()
+        # RedrawVisibility()
+        # print(shortest_path)
+        # shortestPath(0)
+
+        if shortest_path != [] and goal_point != (-10, -10) and start_point != (-10, -10):
+            if start_goal_connect:
+                canvas.create_line([(start_point[0] - offset2, start_point[1] - offset2),
+                                    (goal_point[0] - offset3, goal_point[1] - offset3)], tag="shortest_path",
+                                   fill="blue", width=3)
+            else:
+                canvas.create_line([(start_point[0] - offset2, start_point[1] - offset2), (
+                    currentTranslatedPointList[shortest_path[1]][0] - offset,
+                    currentTranslatedPointList[shortest_path[1]][1] - offset)], tag="shortest_path", fill="blue",
+                                   width=3)
+            for i in range(1, len(shortest_path) - 2):
+                u = shortest_path[i]
+                v = shortest_path[i + 1]
+                canvas.create_line(
+                    [(currentTranslatedPointList[u][0] - offset, currentTranslatedPointList[u][1] - offset),
+                     (currentTranslatedPointList[v][0] - offset, currentTranslatedPointList[v][1] - offset)],
+                    tag="shortest_path", fill="blue", width=3)
+
+            if not start_goal_connect:
+                canvas.create_line([(currentTranslatedPointList[shortest_path[len(shortest_path) - 2]][0] - offset,
+                                     currentTranslatedPointList[shortest_path[len(shortest_path) - 2]][1] - offset),
+                                    (goal_point[0] - offset3, goal_point[1] - offset3)], tag="shortest_path",
+                                   fill="blue",
+                                   width=3)
+    # else:
+        # start_point = (-10, -10)
+        # goal_point = (-10, -10)
+        # shortest_path = []
+        # mode_shortest_path = False
+
     if show_info:
         stop_time = timeit.default_timer()
 
@@ -321,6 +413,8 @@ def generateMap(pointList, edgeList, repetitions, code, show_info):
         if firstInfoWindowCheck:
             if infoWindow.winfo_exists():
                 showInfo()
+
+    last_scale = int(scale.get())
 
 def distance(point1, point2):
     return sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
@@ -389,12 +483,14 @@ def originalVisibilityGraph():
 
     return resConnections
 
-def visibilityGraph(pointList, edgeList, connections, repetitions, show_info):
+def visibilityGraph(pointList, edgeList, connections, repetitions, show_info, click):
 
     global mode_shortest_path
     global start_point
     global goal_point
     global shortest_path
+
+    global last_scale
 
     if show_info:
         global start_time
@@ -406,29 +502,26 @@ def visibilityGraph(pointList, edgeList, connections, repetitions, show_info):
     # shortest_path = []
     # mode_shortest_path = False
 
-    global mode_shortest_path
-    if mode_shortest_path or (start_point == (-10, -10) and goal_point == (-10, -10)):
-        drawVisibilityGraphStartGoal(1)
-        drawVisibilityGraphStartGoal(2)
-    else:
-        start_point = (-10, -10)
-        goal_point = (-10, -10)
-        shortest_path = []
+    # global mode_shortest_path
+    # if mode_shortest_path or (start_point == (-10, -10) and goal_point == (-10, -10)):
+    #     drawVisibilityGraphStartGoal(1)
+    #     drawVisibilityGraphStartGoal(2)
+    # else:
+    #     start_point = (-10, -10)
+    #     goal_point = (-10, -10)
+    #     shortest_path = []
         # mode_shortest_path = False
 
     global zeroPointsEdges
     global zeroVisibilityLines
 
     clearCanvas(0)
-    if repetitions == 0:
-        zeroVisibilityLines = True
-        zeroPointsEdges = True
-        return
 
-    generateMap(pointList, edgeList, repetitions, 'visibility', True)
+    generateMap(pointList, edgeList, repetitions, 'visibility', True, 'none')
 
     global last_mode_clicked
-    last_mode_clicked = 'visibility'
+    if click == 'visibility':
+        last_mode_clicked = 'visibility'
 
     global last_repetitions
     global currentConnections
@@ -452,6 +545,7 @@ def visibilityGraph(pointList, edgeList, connections, repetitions, show_info):
                                    tag='visibility_line', fill="red")
 
         currentConnections = resConnections[:]
+        # print(resConnections)
 
     else:
         for r in range(1, repetitions):
@@ -471,6 +565,56 @@ def visibilityGraph(pointList, edgeList, connections, repetitions, show_info):
 
     drawMap(currentTranslatedPointList, currentEdgeList)
 
+    global mode_shortest_path
+
+    # if (int(scale.get()) != last_scale) and not mode_shortest_path:
+    #     print("function reached 2")
+    #     updateStartGoalPoints()
+    #     RedrawVisibility()
+
+    # canvas.delete('start_point')
+    # canvas.delete('goal_point')
+    RedrawVisibility()
+
+    if mode_shortest_path or (start_point == (-10, -10) and goal_point == (-10, -10)):
+        # drawVisibilityGraphStartGoal(1)
+        # drawVisibilityGraphStartGoal(2)
+        updateStartGoalPoints()
+        # RedrawVisibility()
+        # print(shortest_path)
+        # shortestPath(0)
+
+        if shortest_path != [] and start_point != (-10, -10) and goal_point != (-10, -10):
+            if start_goal_connect:
+                canvas.create_line([(start_point[0] - offset2, start_point[1] - offset2),
+                                    (goal_point[0] - offset3, goal_point[1] - offset3)], tag="shortest_path",
+                                   fill="blue", width=3)
+            else:
+                canvas.create_line([(start_point[0] - offset2, start_point[1] - offset2), (
+                currentTranslatedPointList[shortest_path[1]][0] - offset,
+                currentTranslatedPointList[shortest_path[1]][1] - offset)], tag="shortest_path", fill="blue", width=3)
+            for i in range(1, len(shortest_path) - 2):
+                u = shortest_path[i]
+                v = shortest_path[i + 1]
+                canvas.create_line([(currentTranslatedPointList[u][0] - offset, currentTranslatedPointList[u][1] - offset),
+                                    (currentTranslatedPointList[v][0] - offset, currentTranslatedPointList[v][1] - offset)],
+                                   tag="shortest_path", fill="blue", width=3)
+
+            if not start_goal_connect:
+                canvas.create_line([(currentTranslatedPointList[shortest_path[len(shortest_path) - 2]][0] - offset,
+                                     currentTranslatedPointList[shortest_path[len(shortest_path) - 2]][1] - offset),
+                                    (goal_point[0] - offset3, goal_point[1] - offset3)], tag="shortest_path", fill="blue",
+                                   width=3)
+    # else:
+    #     start_point = (-10, -10)
+    #     goal_point = (-10, -10)
+    #     shortest_path = []
+
+    if repetitions == 0:
+        zeroVisibilityLines = True
+        zeroPointsEdges = True
+        return
+
     if show_info:
         stop_time = timeit.default_timer()
 
@@ -486,6 +630,8 @@ def visibilityGraph(pointList, edgeList, connections, repetitions, show_info):
         if firstInfoWindowCheck:
             if infoWindow.winfo_exists():
                 showInfo()
+
+    last_scale = int(scale.get())
 
 def getConnectionsCount(connections):
     res = 0
@@ -570,14 +716,39 @@ def showInfo():
     line_group.grid(row=1, column=0)
 
 def chooseStartPoint():
-    start_point = (-10, -10)
     global mode_cursor
+    # global mode_shortest_path
+    # global start_point
+
+    start_point = (-10, -10)
+
+    # canvas.delete("start_point")
+    # canvas.delete("start_visibility_line")
+    # mode_shortest_path = False
+    # canvas.delete("shortest_path")
+
+    # if mode_cursor.get() == 1:
+    #     mode_cursor.set(0)
+    #     return
+
     mode_cursor.set(1)
 #     after point is chosen, generate visibility graph with the points, updateinfo
 
 def chooseGoalPoint():
-    goal_point = (-10, -10)
     global mode_cursor
+
+    # global mode_shortest_path
+    # global goal_point
+
+    goal_point = (-10, -10)
+
+    # canvas.delete("goal_point")
+    # canvas.delete("goal_visibility_line")
+    # mode_shortest_path = False
+    # canvas.delete("shortest_path")
+    # if mode_cursor.get() == 2:
+    #     mode_cursor.set(0)
+    #     return
     mode_cursor.set(2)
 #   after point is chosen, generate visibility graph with the points, updateinfo
 #   after both poitns are chosen, shortestPath()
@@ -600,6 +771,10 @@ def drawVisibilityGraphStartGoal(mode):
 
     global start_adj
     global goal_adj
+
+    global offset
+    global offset2
+    global offset3
 
     global currentVisibilityGraphPointList
     if int(entryRepeat.get()) == 0:
@@ -628,30 +803,35 @@ def drawVisibilityGraphStartGoal(mode):
         # if goal_point != (-10, -10):
         #     currentVisibilityGraphPointList.append((goal_point[0] / cellSize, goal_point[1] / cellSize))
         # detranslated_start_point = ((start_point[0]+offset) / cellSize, (start_point[1]+offset) / cellSize)
-        detranslated_start_point = ((start_point[0]) / cellSize, (start_point[1]) / cellSize)
-        pt = (start_point[0]-offset, start_point[1]-offset)
+        # detranslated_start_point = ((start_point[0]) / cellSize, (start_point[1]) / cellSize)
+        pt = (start_point[0]-offset2, start_point[1]-offset2)
         detranslated_pt = detranslated_start_point
         pt_tag = "start_visibility_line"
         pt_tag2 = "start_to_goal_visibility_line"
         pt_color = "darkgreen"
-        other_pt = (goal_point[0]-offset, goal_point[1]-offset)
-        # detranslated_other_pt = ((goal_point[0]+offset) / cellSize, (goal_point[1]+offset) / cellSize)
-        detranslated_other_pt = ((goal_point[0]) / cellSize, (goal_point[1]) / cellSize)
+        other_pt = (goal_point[0]-offset3, goal_point[1]-offset3)
+        pt_offset = offset2
+        detranslated_other_pt = detranslated_goal_point
+        # detranslated_other_pt = ((goal_point[0]) / cellSize, (goal_point[1]) / cellSize)
+        other_pt_offset = offset3
     else:
         canvas.delete('goal_visibility_line')
         goal_adj = []
         # if start_point != (-10, -10):
             # currentVisibilityGraphPointList.append((start_point[0] / cellSize, start_point[1] / cellSize))
         # detranslated_goal_point = ((goal_point[0]+offset) / cellSize, (goal_point[1]+offset) / cellSize)
-        detranslated_goal_point = ((goal_point[0]) / cellSize, (goal_point[1]) / cellSize)
-        pt = (goal_point[0]-offset, goal_point[1]-offset)
+        # detranslated_goal_point = ((goal_point[0]) / cellSize, (goal_point[1]) / cellSize)
+        pt = (goal_point[0]-offset3, goal_point[1]-offset3)
         detranslated_pt = detranslated_goal_point
         pt_tag = "goal_visibility_line"
         pt_tag2 = "goal_to_start_visibility_line"
         pt_color = "orange"
-        other_pt = (start_point[0]-offset, start_point[1]-offset)
+        other_pt = (start_point[0]-offset2, start_point[1]-offset2)
+        pt_offset = offset3
         # detranslated_other_pt = ((start_point[0]+offset) / cellSize, (start_point[1]+offset) / cellSize)
-        detranslated_other_pt = ((start_point[0]) / cellSize, (start_point[1]) / cellSize)
+        # detranslated_other_pt = ((start_point[0]) / cellSize, (start_point[1]) / cellSize)
+        detranslated_other_pt = detranslated_start_point
+        other_pt_offset = offset2
 
     currentTranslatedVisibilityGraphPointList = translatePoints(currentVisibilityGraphPointList)
     currentVisibilityGraphPointList.append([])
@@ -664,7 +844,7 @@ def drawVisibilityGraphStartGoal(mode):
                                currentVisibilityGraphPointList[pair[1]]):
                     connect = False
                     break
-        if connect:
+        if connect and pt != (-10, -10):
                 if other_pt != (-10, -10):
                     connect = True
                     for pair in currentEdgeList:
@@ -673,8 +853,8 @@ def drawVisibilityGraphStartGoal(mode):
                                        currentVisibilityGraphPointList[pair[1]]):
                             connect = False
                             break
-                    if connect:
-                        # canvas.create_line([(pt[0]-offset, pt[1]-offset), (other_pt[0]-offset, other_pt[1]-offset)], tag=pt_tag2, fill="blue")
+                    if connect and pt != (-10, -10) and other_pt != (-10, -10):
+                        # canvas.create_line([(pt[0]-pt_offset, pt[1]-pt_offset), (other_pt[0]-other_pt_offset, other_pt[1]-other_pt_offset)], tag=pt_tag2, fill="blue")
                         canvas.create_line([pt, other_pt], tag=pt_tag2, fill="blue")
                         # start_adj.append(len(currentPointList)+1)
                         global start_goal_connect
@@ -687,17 +867,24 @@ def drawVisibilityGraphStartGoal(mode):
             #                        tag=pt_tag2, fill="blue")
             #     print(i, pt)
             # else:
-                canvas.create_line([pt, (currentTranslatedVisibilityGraphPointList[i][0]-offset, currentTranslatedVisibilityGraphPointList[i][1]-offset)],
-                               tag=pt_tag, fill=pt_color)
-
-                print(i, detranslated_pt)
-                if pt_tag == "start_visibility_line":
-                    start_adj.append(i)
-                else:
-                    goal_adj.append(i)
+            #     canvas.create_line([(pt[0]-pt_offset, pt[1]-pt_offset), (currentTranslatedVisibilityGraphPointList[i][0]-offset, currentTranslatedVisibilityGraphPointList[i][1]-offset)],
+            #                    tag=pt_tag, fill=pt_color)
+                if (pt != (-10, -10)):
+                    canvas.create_line([pt, (
+                    currentTranslatedVisibilityGraphPointList[i][0] - offset,
+                    currentTranslatedVisibilityGraphPointList[i][1] - offset)],
+                                       tag=pt_tag, fill=pt_color)
+                    # print(i, detranslated_pt)
+                    if pt_tag == "start_visibility_line":
+                        start_adj.append(i)
+                    else:
+                        goal_adj.append(i)
 
     if start_point != (-10, -10) and goal_point != (-10, -10) and int(entryRepeat.get()) == 0:
-        canvas.create_line([start_point, goal_point], tag="start_to_goal_visibility_line", fill="blue")
+        # canvas.create_line([start_point, goal_point], tag="start_to_goal_visibility_line", fill="blue")
+        canvas.create_line(
+            [(start_point[0] - offset2, start_point[1] - offset2), (goal_point[0] - offset3, goal_point[1] - offset3)],
+            tag="start_to_goal_visibility_line", fill="blue")
     # print(start_adj)
     # print(goal_adj)
     # print(currentConnections)
@@ -720,7 +907,7 @@ def createAllConnections():
         allConnections.append([])
 
     for i in range(len(currentConnections)):
-        print(i)
+        # print(i)
         for x in currentConnections[i]:
             d = distance(currentPointList[i], currentPointList[x])
             allConnections[i].append((x, d))
@@ -782,6 +969,20 @@ def createAllConnections():
     return allConnections
 
 def shortestPath(code):
+
+    global pointList
+    global edgeList
+    global connections
+    global entryRepeat
+    global last_mode_clicked
+
+    # if last_mode_clicked != 'visibility':
+    #     visibilityGraph(pointList, edgeList, connections, int(entryRepeat.get()), True, 'visibility')
+    if last_mode_clicked != 'visibility' and last_repetitions != int(entryRepeat.get()):
+        visibilityGraph(pointList, edgeList, connections, int(entryRepeat.get()), True, 'visibility')
+        canvas.delete('visibility_line')
+        last_mode_clicked = 'map'
+
     global infoWindow
     global firstInfoWindowCheck
 
@@ -803,10 +1004,14 @@ def shortestPath(code):
     global stop_time
     start_time = timeit.default_timer()
 
+    global offset
+    global offset2
+    global offset3
+
     if int(entryRepeat.get()) == 0:
         # canvas.delete('shortest_path')
         if start_point != (-10, -10) and goal_point != (-10, -10):
-            canvas.create_line([(start_point[0]-offset, start_point[1]-offset), (goal_point[0]-offset, goal_point[1]-offset)],
+            canvas.create_line([(start_point[0]-offset2, start_point[1]-offset2), (goal_point[0]-offset3, goal_point[1]-offset3)],
                                tag='shortest_path', fill="blue", width=3)
         return
 
@@ -874,19 +1079,19 @@ def shortestPath(code):
     # print(tmp_v)
     shortest_path.append(tmp_v)
     shortest_path.reverse()
-    print(shortest_path)
+    # print(shortest_path)
     if start_goal_connect:
-        canvas.create_line([(start_point[0]-offset, start_point[1]-offset), (goal_point[0]-offset, goal_point[1]-offset)], tag="shortest_path",
+        canvas.create_line([(start_point[0]-offset2, start_point[1]-offset2), (goal_point[0]-offset3, goal_point[1]-offset3)], tag="shortest_path",
                            fill="blue", width=3)
     else:
-        canvas.create_line([(start_point[0]-offset, start_point[1]-offset), (currentTranslatedPointList[shortest_path[1]][0]-offset, currentTranslatedPointList[shortest_path[1]][1]-offset)], tag="shortest_path", fill="blue", width=3)
+        canvas.create_line([(start_point[0]-offset2, start_point[1]-offset2), (currentTranslatedPointList[shortest_path[1]][0]-offset, currentTranslatedPointList[shortest_path[1]][1]-offset)], tag="shortest_path", fill="blue", width=3)
     for i in range(1, len(shortest_path)-2):
         u = shortest_path[i]
         v = shortest_path[i+1]
         canvas.create_line([(currentTranslatedPointList[u][0]-offset, currentTranslatedPointList[u][1]-offset), (currentTranslatedPointList[v][0]-offset, currentTranslatedPointList[v][1]-offset)], tag="shortest_path", fill="blue", width=3)
 
     if not start_goal_connect:
-        canvas.create_line([(currentTranslatedPointList[shortest_path[len(shortest_path)-2]][0]-offset, currentTranslatedPointList[shortest_path[len(shortest_path)-2]][1]-offset), (goal_point[0]-offset, goal_point[1]-offset)], tag="shortest_path", fill="blue", width=3)
+        canvas.create_line([(currentTranslatedPointList[shortest_path[len(shortest_path)-2]][0]-offset, currentTranslatedPointList[shortest_path[len(shortest_path)-2]][1]-offset), (goal_point[0]-offset3, goal_point[1]-offset3)], tag="shortest_path", fill="blue", width=3)
 
     stop_time = timeit.default_timer()
 
@@ -906,7 +1111,15 @@ def choosePoint(event):
     global mode_shortest_path
     global start_point
     global goal_point
+    global detranslated_start_point
+    global detranslated_goal_point
     global shortest_path
+
+    global offset
+    global offset2
+    global offset3
+    global offset2_original
+    global offset3_original
 
     mode = mode_cursor.get()
     if mode == 0:
@@ -926,8 +1139,11 @@ def choosePoint(event):
                 # currentVisibilityGraphPointList[len(currentPointList)-2] = (-10, -10)
             start_point = (x, y)
             canvas.delete('start_point')
-            canvas.create_oval(x - offset - pointSize, y -offset - pointSize, x -offset + pointSize, y -offset + pointSize,
+            canvas.create_oval(x - pointSize, y - pointSize, x + pointSize, y + pointSize,
                       fill="darkgreen", tag='start_point')
+            offset2_original = int(scalePos.get())
+            offset2 = int(scalePos.get()) - offset2_original
+            detranslated_start_point = ((start_point[0] + offset2_original) / cellSize, (start_point[1] + offset2_original) / cellSize)
             drawVisibilityGraphStartGoal(1)
         if mode == 2:
             # if (goal_point != (-10, -10)):
@@ -935,8 +1151,11 @@ def choosePoint(event):
                 # currentVisibilityGraphPointList[len(currentPointList) - 1] = (-10, -10)
             goal_point = (x, y)
             canvas.delete('goal_point')
-            canvas.create_oval(x -offset - pointSize, y -offset - pointSize, x -offset + pointSize, y -offset + pointSize,
+            canvas.create_oval(x - pointSize, y - pointSize, x + pointSize, y + pointSize,
                       fill="orange", tag='goal_point')
+            offset3_original = int(scalePos.get())
+            offset3 = int(scalePos.get()) - offset3_original
+            detranslated_goal_point = ((goal_point[0] + offset3_original) / cellSize, (goal_point[1] + offset3_original) / cellSize)
             drawVisibilityGraphStartGoal(2)
         if mode_shortest_path:
             shortestPath(0)
@@ -944,35 +1163,66 @@ def choosePoint(event):
 def RedrawVisibility():
     global start_point
     global goal_point
+
+    if start_point == (-10, -10) and goal_point == (-10, -10):
+        return
+
+    canvas.delete('start_point')
+    canvas.delete('goal_point')
+
     global offset
-    drawVisibilityGraphStartGoal(1)
-    drawVisibilityGraphStartGoal(2)
-    canvas.create_oval(start_point[0] - offset - pointSize, start_point[1] - offset - pointSize, start_point[0] - offset + pointSize, start_point[1] - offset + pointSize,
+    global offset2
+    global offset3
+    if start_point != (-10, -10):
+        drawVisibilityGraphStartGoal(1)
+    if goal_point != (-10, -10):
+        drawVisibilityGraphStartGoal(2)
+    canvas.create_oval(start_point[0] - offset2 - pointSize, start_point[1] - offset2 - pointSize, start_point[0] - offset2 + pointSize, start_point[1] - offset2 + pointSize,
                        fill="darkgreen", tag='start_point')
-    canvas.create_oval(goal_point[0] - offset - pointSize, goal_point[1] - offset - pointSize,
-                       goal_point[0] - offset + pointSize, goal_point[1] - offset + pointSize,
+    canvas.create_oval(goal_point[0] - offset3 - pointSize, goal_point[1] - offset3 - pointSize,
+                       goal_point[0] - offset3 + pointSize, goal_point[1] - offset3 + pointSize,
                        fill="orange", tag='goal_point')
 
 def updateScalePos(event):
+
+    # CLEAR XONG KO REDRAW!!! FIX THIS BUG!!!
+
+    # print(last_mode_clicked)
     global offset
+    global offset2
+    global offset3
+    global offset2_original
+    global offset3_original
     global noUpdate
+    # global mode_cursor
+
     noUpdate = True
+    offset2 = int(scalePos.get())-offset2_original
+    offset3 = int(scalePos.get())-offset3_original
+    # print(offset, offset2, offset3)
     offset = int(scalePos.get())
     clearCanvas(0)
+    print(last_mode_clicked)
     # drawMap(currentTranslatedPointList, currentEdgeList)
     if last_mode_clicked == 'map':
-        generateMap(pointList, edgeList, int(entryRepeat.get()), 'none', False)
+        generateMap(pointList, edgeList, int(entryRepeat.get()), 'none', False, 'map')
     elif last_mode_clicked == 'visibility':
-        visibilityGraph(pointList, edgeList, connections, int(entryRepeat.get()), False)
+        visibilityGraph(pointList, edgeList, connections, int(entryRepeat.get()), False, 'visibility')
 
     global start_point
     global goal_point
 
-    RedrawVisibility()
+    # print(start_point)
+    # print(goal_point)
 
-    shortestPath(0)
+    if last_mode_clicked != "none" and mode_shortest_path:
+        RedrawVisibility()
+
+        shortestPath(0)
 
     noUpdate = False
+
+    # mode_cursor.set(0)
 
 # GUI ==========
 Label(title_section, text="", font='Helvetica 2').pack()
@@ -996,7 +1246,7 @@ entryRepeat = Entry(line_group, width=10, borderwidth=5, font='Helvetica 12')
 entryRepeat.insert(0, 0)
 entryRepeat.pack(side=LEFT)
 line_group.pack(anchor=W)
-Button(control_panel, text="GENERATE", font='Helvetica 14 bold', bd=5, fg="black", command=lambda: generateMap(pointList, edgeList, int(entryRepeat.get()), 'none', True)).pack()
+Button(control_panel, text="GENERATE", font='Helvetica 14 bold', bd=5, fg="black", command=lambda: generateMap(pointList, edgeList, int(entryRepeat.get()), 'none', True, 'click')).pack()
 Label(control_panel, text="").pack()
 Label(control_panel, text="CHOOSE POINTS", font='Helvetica 14 bold', fg="darkred", pady=10).pack()
 line_group = Label(control_panel, text="")
@@ -1006,7 +1256,7 @@ Button(line_group, text="Goal", font='Helvetica 14 bold', bd=5, fg="orange", com
 line_group.pack()
 
 Label(visibility_panel, text="VISIBILITY GRAPH", font='Helvetica 16 bold underline', pady=10).grid(row=0, column=0)
-Button(visibility_panel, text="GENERATE", font='Helvetica 14 bold', bd=5, fg="black", command=lambda: visibilityGraph(pointList, edgeList, connections, int(entryRepeat.get()), True)).grid(row=1, column=0)
+Button(visibility_panel, text="GENERATE", font='Helvetica 14 bold', bd=5, fg="black", command=lambda: visibilityGraph(pointList, edgeList, connections, int(entryRepeat.get()), True, 'visibility')).grid(row=1, column=0)
 
 Label(visibility_panel, text=" ", font="Helvetica 2").grid(row=2, column=0)
 Button(visibility_panel, text="SHOW INFORMATION", font='Helvetica 16 bold', bd=5, command=showInfo, bg="lightgreen", fg="darkgreen").grid(row=3, column=0)
