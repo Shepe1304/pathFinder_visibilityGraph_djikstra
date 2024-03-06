@@ -574,7 +574,9 @@ def choosePoint(event):
         y=event.y
         pointSize = 2 + int(scale.get()) * 0.1
 
-        tmp_point = ((x + offset2_original) / cellSize, (y + offset2_original) / cellSize)
+        tmp_offset_value = 0
+
+        tmp_point = ((x + int(scalePos.get())) / cellSize, (y + int(scalePos.get())) / cellSize)
         upperEdges = []
         cnt = 0
         for pairCheck in currentEdgeList:
@@ -704,6 +706,36 @@ def drawVisibilityGraphStartGoal(mode):
                                currentVisibilityGraphPointList[pair[1]]):
                     connect = False
                     break
+
+            if connect:
+                cnt = 0
+                # id = 0
+                midPoint = ((detranslated_pt[0] + currentVisibilityGraphPointList[i][0]) / 2,
+                            (detranslated_pt[1] + currentVisibilityGraphPointList[i][1]) / 2)
+                upperEdges = []
+                for pairCheck in currentEdgeList:
+                    # id += 1
+                    if currentVisibilityGraphPointList[pairCheck[0]][0] == currentVisibilityGraphPointList[pairCheck[1]][0]:
+                        continue
+                    else:
+                        if currentVisibilityGraphPointList[pairCheck[0]][1] <= midPoint[1] and min(
+                                currentVisibilityGraphPointList[pairCheck[0]][0],
+                                currentVisibilityGraphPointList[pairCheck[1]][
+                                    0]) <= midPoint[0] and max(
+                            currentVisibilityGraphPointList[pairCheck[0]][0], currentVisibilityGraphPointList[pairCheck[1]][0]) >= midPoint[0]:
+                            for upperEdge in upperEdges:
+                                if (min(currentVisibilityGraphPointList[pairCheck[0]][0],
+                                        currentVisibilityGraphPointList[pairCheck[1]][0]) == max(
+                                        currentVisibilityGraphPointList[upperEdge[0]][0],
+                                        currentVisibilityGraphPointList[upperEdge[1]][0]) or max(
+                                    currentVisibilityGraphPointList[pairCheck[0]][0], currentVisibilityGraphPointList[pairCheck[1]][0]) == min(
+                                    currentVisibilityGraphPointList[upperEdge[0]][0], currentVisibilityGraphPointList[upperEdge[1]][0])):
+                                    cnt -= 1
+                            upperEdges.append(pairCheck)
+                            cnt += 1
+                if cnt % 2 == 0:
+                    connect = False
+
         if connect and pt != (-10, -10):
                 if other_pt != (-10, -10):
                     connect = True
@@ -713,6 +745,40 @@ def drawVisibilityGraphStartGoal(mode):
                                        currentVisibilityGraphPointList[pair[1]]):
                             connect = False
                             break
+
+                    if connect:
+                        cnt = 0
+                        # id = 0
+                        midPoint = ((pt[0] + detranslated_pt[0]) / 2,
+                                    (pt[1] + detranslated_pt[1]) / 2)
+                        upperEdges = []
+                        for pairCheck in currentEdgeList:
+                            # id += 1
+                            if currentVisibilityGraphPointList[pairCheck[0]][0] == \
+                                    currentVisibilityGraphPointList[pairCheck[1]][0]:
+                                continue
+                            else:
+                                if currentVisibilityGraphPointList[pairCheck[0]][1] <= midPoint[1] and min(
+                                        currentVisibilityGraphPointList[pairCheck[0]][0],
+                                        currentVisibilityGraphPointList[pairCheck[1]][
+                                            0]) <= midPoint[0] and max(
+                                    currentVisibilityGraphPointList[pairCheck[0]][0],
+                                    currentVisibilityGraphPointList[pairCheck[1]][0]) >= midPoint[0]:
+                                    for upperEdge in upperEdges:
+                                        if (min(currentVisibilityGraphPointList[pairCheck[0]][0],
+                                                currentVisibilityGraphPointList[pairCheck[1]][0]) == max(
+                                            currentVisibilityGraphPointList[upperEdge[0]][0],
+                                            currentVisibilityGraphPointList[upperEdge[1]][0]) or max(
+                                            currentVisibilityGraphPointList[pairCheck[0]][0],
+                                            currentVisibilityGraphPointList[pairCheck[1]][0]) == min(
+                                            currentVisibilityGraphPointList[upperEdge[0]][0],
+                                            currentVisibilityGraphPointList[upperEdge[1]][0])):
+                                            cnt -= 1
+                                    upperEdges.append(pairCheck)
+                                    cnt += 1
+                        if cnt % 2 == 0:
+                            connect = False
+
                     if connect and pt != (-10, -10) and other_pt != (-10, -10):
                         canvas.create_line([pt, other_pt], tag=pt_tag2, fill="blue")
                         global start_goal_connect
